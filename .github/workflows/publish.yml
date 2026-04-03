@@ -19,7 +19,7 @@
           with:
             node-version: 18
             registry-url: 'https://npm.pkg.github.com'
-            scope: '@osskit'
+            scope: '@lama-finance'
         - run: yarn
         - run: yarn build
         - run: npm publish

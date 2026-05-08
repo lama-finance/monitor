@@ -31,15 +31,14 @@ const innerMonitor = <Callable>({ scope: monitorScope, method: monitorMethod, ca
         labelNames: ['method', 'result', ...labelingKeys],
       })
     : undefined;
-  const histogram = globalMetrics
-    ? createHistogram({
-        name: `${metric}_execution_time`,
-        help: `${metric}_execution_time`,
-        labelNames: ['method', 'result', ...labelingKeys],
-      })
-    : undefined;
+  const histogram = createHistogram({
+    name: `${metric}_execution_time`,
+    help: `${metric}_execution_time`,
+    labelNames: ['method', 'result', ...labelingKeys],
+    report: globalMetrics,
+  });
 
-  const stopTimer = histogram?.startTimer();
+  const stopTimer = histogram.startTimer();
 
   try {
     if (logExecutionStart) {
@@ -55,11 +54,11 @@ const innerMonitor = <Callable>({ scope: monitorScope, method: monitorMethod, ca
     const result = callable();
 
     if (!is.promise(result)) {
-      const executionTime = stopTimer?.();
+      const executionTime = stopTimer();
       const parsedResult = safe(options?.parseResult)(result);
       counter?.inc({ ...labeling, method, result: 'success' });
-      if (executionTime !== undefined) {
-        histogram?.observe({ ...labeling, method, result: 'success' }, executionTime);
+      if (globalMetrics) {
+        histogram.observe({ ...labeling, method, result: 'success' }, executionTime);
       }
       logger.info(
         {
@@ -77,11 +76,11 @@ const innerMonitor = <Callable>({ scope: monitorScope, method: monitorMethod, ca
 
     return result
       .then(async (promiseResult) => {
-        const executionTime = stopTimer?.();
+        const executionTime = stopTimer();
         const parsedResult = safe(options?.parseResult)(promiseResult);
         counter?.inc({ ...labeling, method, result: 'success' });
-        if (executionTime !== undefined) {
-          histogram?.observe({ ...labeling, method, result: 'success' }, executionTime);
+        if (globalMetrics) {
+          histogram.observe({ ...labeling, method, result: 'success' }, executionTime);
         }
 
         logger.info(

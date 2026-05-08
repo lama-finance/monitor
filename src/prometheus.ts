@@ -1,23 +1,11 @@
-import { Counter, Histogram, Registry } from 'prom-client';
+import { Counter, Histogram } from 'prom-client';
 import { prometheusBuckets } from './globalOptions.js';
 
 const histograms: Record<string, Histogram> = {};
 
 const counters: Record<string, Counter> = {};
 
-const isolatedRegistry = new Registry();
-
-export const createHistogram = ({
-  name,
-  help,
-  labelNames,
-  report = true,
-}: {
-  name: string;
-  help: string;
-  labelNames?: string[];
-  report?: boolean;
-}) => {
+export const createHistogram = ({ name, help, labelNames }: { name: string; help: string; labelNames?: string[] }) => {
   const existingHistograms = histograms[name];
 
   if (existingHistograms) {
@@ -29,7 +17,6 @@ export const createHistogram = ({
     help,
     buckets: prometheusBuckets,
     labelNames,
-    registers: report ? undefined : [isolatedRegistry],
   });
 
   histograms[name] = histogram;

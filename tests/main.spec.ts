@@ -256,6 +256,32 @@ describe('monitor', () => {
       setGlobalOptions({ metrics: true });
     });
 
+    it('should not throw when scope contains characters Prometheus rejects in metric names (e.g. dots) and metrics are disabled', () => {
+      const logger: BaseLogger = {
+        level: 'info',
+        info: vi.fn<unknown[]>(),
+        debug: vi.fn<unknown[]>(),
+        error: vi.fn<unknown[]>(),
+        fatal: vi.fn<unknown[]>(),
+        silent: vi.fn<unknown[]>(),
+        trace: vi.fn<unknown[]>(),
+        warn: vi.fn<unknown[]>(),
+      };
+
+      setGlobalOptions({ logger, metrics: false });
+
+      const scoped = createMonitor({ scope: 'openWeb.handler' });
+
+      expect(() => scoped('websiteScrape', () => 5)).not.toThrow();
+      expect(scoped('websiteScrape', () => 5)).toBe(5);
+      expect(logger.info).toHaveBeenLastCalledWith(
+        { extra: { context: {}, executionResult: undefined, executionTime: expect.any(Number) } },
+        'openWeb.handler.websiteScrape.success',
+      );
+
+      setGlobalOptions({ metrics: true });
+    });
+
     it('should not report metrics but still log execution time for async functions when metrics is disabled', async () => {
       const logger: BaseLogger = {
         level: 'info',

@@ -31,14 +31,26 @@ const innerMonitor = <Callable>({ scope: monitorScope, method: monitorMethod, ca
         labelNames: ['method', 'result', ...labelingKeys],
       })
     : undefined;
-  const histogram = createHistogram({
-    name: `${metric}_execution_time`,
-    help: `${metric}_execution_time`,
-    labelNames: ['method', 'result', ...labelingKeys],
-    report: globalMetrics,
-  });
+  // Histogram is only created when metrics reporting is enabled. When disabled, we
+  // still want to log executionTime, so timing happens via performance.now() — fully
+  // decoupled from prom-client. Creation is also wrapped in a try/catch so a Prometheus
+  // name-validation failure (e.g. dotted scope) degrades gracefully to "no histogram"
+  // instead of bubbling out of monitor() and aborting the wrapped callable.
+  let histogram: ReturnType<typeof createHistogram> | undefined;
+  if (globalMetrics) {
+    try {
+      histogram = createHistogram({
+        name: `${metric}_execution_time`,
+        help: `${metric}_execution_time`,
+        labelNames: ['method', 'result', ...labelingKeys],
+      });
+    } catch {
+      histogram = undefined;
+    }
+  }
 
-  const stopTimer = histogram.startTimer();
+  const startedAt = performance.now();
+  const elapsedSeconds = () => (performance.now() - startedAt) / 1000;
 
   try {
     if (logExecutionStart) {
@@ -54,12 +66,10 @@ const innerMonitor = <Callable>({ scope: monitorScope, method: monitorMethod, ca
     const result = callable();
 
     if (!is.promise(result)) {
-      const executionTime = stopTimer();
+      const executionTime = elapsedSeconds();
       const parsedResult = safe(options?.parseResult)(result);
       counter?.inc({ ...labeling, method, result: 'success' });
-      if (globalMetrics) {
-        histogram.observe({ ...labeling, method, result: 'success' }, executionTime);
-      }
+      histogram?.observe({ ...labeling, method, result: 'success' }, executionTime);
       logger.info(
         {
           extra: {
@@ -76,12 +86,10 @@ const innerMonitor = <Callable>({ scope: monitorScope, method: monitorMethod, ca
 
     return result
       .then(async (promiseResult) => {
-        const executionTime = stopTimer();
+        const executionTime = elapsedSeconds();
         const parsedResult = safe(options?.parseResult)(promiseResult);
         counter?.inc({ ...labeling, method, result: 'success' });
-        if (globalMetrics) {
-          histogram.observe({ ...labeling, method, result: 'success' }, executionTime);
-        }
+        histogram?.observe({ ...labeling, method, result: 'success' }, executionTime);
 
         logger.info(
           {

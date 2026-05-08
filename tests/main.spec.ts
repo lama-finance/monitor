@@ -225,7 +225,7 @@ describe('monitor', () => {
       });
     });
 
-    it('should not create metrics when metrics is disabled', () => {
+    it('should not report metrics but still log execution time when metrics is disabled', () => {
       const logger: BaseLogger = {
         level: 'info',
         info: vi.fn<unknown[]>(),
@@ -249,14 +249,14 @@ describe('monitor', () => {
 
       expect(metricsAfter).toBe(metricsBefore);
       expect(logger.info).toHaveBeenCalledWith(
-        { extra: { context: {}, executionResult: undefined, executionTime: undefined } },
+        { extra: { context: {}, executionResult: undefined, executionTime: expect.any(Number) } },
         'noMetricsScope.name.success',
       );
 
       setGlobalOptions({ metrics: true });
     });
 
-    it('should not create metrics for async functions when metrics is disabled', async () => {
+    it('should not report metrics but still log execution time for async functions when metrics is disabled', async () => {
       const logger: BaseLogger = {
         level: 'info',
         info: vi.fn<unknown[]>(),
@@ -272,7 +272,7 @@ describe('monitor', () => {
 
       const metricsBefore = register.getMetricsAsArray().length;
 
-      const scoped = createMonitor({ scope: 'noMetricsScope' });
+      const scoped = createMonitor({ scope: 'noMetricsScopeAsync' });
 
       await expect(scoped('name', async () => 5)).resolves.toBe(5);
 
@@ -280,8 +280,8 @@ describe('monitor', () => {
 
       expect(metricsAfter).toBe(metricsBefore);
       expect(logger.info).toHaveBeenCalledWith(
-        { extra: { context: {}, executionResult: undefined, executionTime: undefined } },
-        'noMetricsScope.name.success',
+        { extra: { context: {}, executionResult: undefined, executionTime: expect.any(Number) } },
+        'noMetricsScopeAsync.name.success',
       );
 
       setGlobalOptions({ metrics: true });
